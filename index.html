@@ -1,0 +1,1449 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ooredoo Care · Web SDK</title>
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap"
+    />
+    <style>
+      /* Design tokens follow the Ooredoo Qatar look (red on white) so this page
+         reads as the same product. Dark values are the same hues, inverted. */
+      :root {
+        /* Ooredoo brand: signature red on white, neutral greys for structure. */
+        --brand: #ed1c24;
+        --brand-d: #c41118;
+        --brand-2: #8a1119;
+        --blue: #ed1c24;      /* aliases kept so shared component CSS still resolves */
+        --blue-d: #c41118;
+        --navy: #2b2b30;
+        --cyan: #ff6b52;
+        --ink: #1c1c1e;
+        --muted: #6b6b73;
+        --line: #e6e6ea;
+        --surface: #f4f4f6;
+        --surface-2: #fafafb;
+        --chip: #fdecec;
+        --edge: #e9e9ef;
+        --red: #c41118;
+        --green: #1f8a4c;
+        --card: #ffffff;
+        --radius: 14px;
+        --shadow: 0 1px 2px rgba(28, 28, 30, 0.05),
+          0 10px 30px rgba(28, 28, 30, 0.07);
+      }
+      html[data-theme="dark"] {
+        --ink: #f2f2f4;
+        --muted: #9a9aa4;
+        --line: #2e2e34;
+        --surface: #141416;
+        --surface-2: #1b1b1f;
+        --chip: #33191b;
+        --edge: #2e2e34;
+        --card: #1a1a1d;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+      * { box-sizing: border-box; }
+      /* An author display rule outranks the UA [hidden] rule, so [hidden] needs
+         !important to reliably collapse the identity rows before identification. */
+      [hidden] { display: none !important; }
+      body {
+        margin: 0;
+        background: var(--surface);
+        color: var(--ink);
+        font-family: "Noto Sans", -apple-system, Segoe UI, Roboto, Helvetica,
+          Arial, sans-serif;
+        font-size: 15px;
+        line-height: 1.55;
+      }
+      a { color: var(--blue-d); }
+
+      /* ---------- utility bar + header (mygov chrome) ---------- */
+      .util {
+        background: #1c1c1e;
+        color: #fff;
+        font-size: 12.5px;
+      }
+      .util__in,
+      .hdr__in,
+      .wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+      .util__in {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 34px;
+      }
+      .util__spacer { flex: 1; }
+      .pill {
+        background: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.32);
+        border-radius: 999px;
+        padding: 2px 9px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        font-size: 11px;
+      }
+      .util button {
+        background: none;
+        border: 0;
+        color: #fff;
+        font: inherit;
+        cursor: pointer;
+        opacity: 0.92;
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .util button:hover { opacity: 1; text-decoration: underline; }
+
+      .hdr {
+        background: var(--card);
+        border-bottom: 1px solid var(--line);
+      }
+      .hdr__in {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        height: 66px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-weight: 700;
+        font-size: 19px;
+        letter-spacing: -0.01em;
+      }
+      .brand__mark {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: var(--brand);
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-weight: 700;
+        font-size: 15px;
+      }
+      .nav {
+        display: flex;
+        gap: 18px;
+        margin-left: 10px;
+        flex: 1;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .nav span { cursor: default; }
+      .nav span:hover { color: var(--ink); }
+      @media (max-width: 900px) { .nav { display: none; } }
+
+      /* ---------- layout ---------- */
+      .wrap { padding-top: 22px; padding-bottom: 44px; }
+      .crumb {
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 12px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 20px;
+        align-items: start;
+      }
+      @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--edge);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      /* ---------- chat ---------- */
+      .chat__head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 15px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      .avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 11px;
+        background: var(--brand);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        font-size: 13px;
+      }
+      .chat__title { font-weight: 600; }
+      .chat__sub { color: var(--muted); font-size: 12.5px; }
+      .status {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--muted);
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--muted);
+      }
+      .is-connected .dot { background: var(--green); }
+      .is-offline .dot { background: #d3a11a; }
+
+      .banner {
+        display: none;
+        gap: 10px;
+        padding: 11px 18px;
+        background: #fff8e6;
+        border-bottom: 1px solid #f0e0b6;
+        color: #6b5410;
+        font-size: 13px;
+      }
+      html[data-theme="dark"] .banner {
+        background: #2a2412;
+        border-color: #4a3f1c;
+        color: #e8d9a6;
+      }
+      .banner.is-shown { display: flex; }
+      .banner code {
+        background: rgba(0, 0, 0, 0.07);
+        padding: 1px 5px;
+        border-radius: 5px;
+      }
+
+      .stream {
+        padding: 18px;
+        min-height: 180px;
+        max-height: 58vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .row { display: flex; }
+      .row--me { justify-content: flex-end; }
+      .bubble {
+        max-width: 86%;
+        padding: 11px 14px;
+        border-radius: 14px;
+        border: 1px solid var(--edge);
+        background: var(--surface-2);
+      }
+      .row--me .bubble {
+        background: var(--blue);
+        border-color: var(--blue-d);
+        color: #fff;
+        border-bottom-right-radius: 5px;
+      }
+      .row--bot .bubble { border-bottom-left-radius: 5px; }
+      .bubble p { margin: 0 0 8px; }
+      .bubble p:last-child { margin-bottom: 0; }
+      .bubble h3 {
+        margin: 2px 0 8px;
+        font-size: 14.5px;
+        letter-spacing: 0.01em;
+      }
+      .bubble code {
+        background: var(--chip);
+        padding: 1px 5px;
+        border-radius: 5px;
+        font-size: 13px;
+      }
+      .row--me .bubble code { background: rgba(255, 255, 255, 0.22); }
+
+      /* rich card: GitHub-style tables from the agent's Markdown */
+      /* day-grouped time picker */
+      .cal {
+        border: 1px solid var(--edge);
+        border-radius: 12px;
+        background: var(--card);
+        padding: 4px 12px 12px;
+        margin: 10px 0 4px;
+      }
+      .cal__day + .cal__day { border-top: 1px solid var(--line); margin-top: 10px; }
+      .cal__date {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 10px 0 8px;
+      }
+      .cal__dow {
+        background: var(--blue);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 6px;
+      }
+      .cal__dnum { font-weight: 600; font-size: 13.5px; }
+      .cal__slots {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+        gap: 7px;
+      }
+      .slot {
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: var(--blue-d);
+        background: var(--surface-2);
+        border: 1px solid var(--edge);
+        border-radius: 9px;
+        padding: 8px 4px;
+        cursor: pointer;
+        transition: border-color .12s, background .12s, transform .12s;
+      }
+      .slot:hover:not(:disabled) {
+        border-color: var(--blue);
+        background: var(--chip);
+        transform: translateY(-1px);
+      }
+      .slot:disabled { cursor: default; }
+      .slot.opt--picked { background: var(--blue); border-color: var(--blue-d); color: #fff; }
+      /* selectable option cards */
+      .opts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 8px;
+        margin: 10px 0 4px;
+      }
+      .opt {
+        text-align: left;
+        font: inherit;
+        color: var(--ink);
+        background: var(--card);
+        border: 1px solid var(--edge);
+        border-radius: 12px;
+        padding: 10px 12px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        transition: border-color .12s, box-shadow .12s, transform .12s;
+      }
+      .opt:hover:not(:disabled) {
+        border-color: var(--blue);
+        box-shadow: 0 2px 10px rgba(15, 126, 245, 0.14);
+        transform: translateY(-1px);
+      }
+      .opt:disabled { cursor: default; }
+      .opt--picked { border-color: var(--blue); background: var(--chip); }
+      .opt--dim { opacity: 0.45; }
+      .opt__title { font-weight: 600; font-size: 13.5px; line-height: 1.35; }
+      .opt__meta { color: var(--muted); font-size: 12.5px; }
+      .opt__row { display: flex; gap: 8px; font-size: 12.5px; margin-top: 2px; }
+      .opt__k { color: var(--muted); }
+      .opt__v { font-weight: 600; }
+      .li__sub { color: var(--muted); font-size: 13px; }
+      /* record cards for grouped list output */
+      .recs { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 4px; }
+      .rec {
+        border: 1px solid var(--edge);
+        border-left: 3px solid var(--blue);
+        border-radius: 10px;
+        background: var(--card);
+        padding: 9px 12px;
+      }
+      .rec__head { font-size: 14px; margin-bottom: 4px; }
+      .rec__row { display: flex; gap: 10px; font-size: 13px; padding: 1px 0; }
+      .rec__k { flex: 0 0 40%; color: var(--muted); }
+      .rec__v { flex: 1; }
+      .rec__note { font-size: 13px; color: var(--muted); }
+      /* status pills */
+      .st {
+        display: inline-block;
+        padding: 1px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.5;
+        white-space: nowrap;
+      }
+      .st--ok { background: #e6f4ea; color: #1e6b32; }
+      .st--warn { background: #fff4e0; color: #8a5a00; }
+      .st--bad { background: #fdeaea; color: #a11414; }
+      .st--neutral { background: var(--chip); color: var(--ink); }
+      html[data-theme="dark"] .st--ok { background: #12331d; color: #7fd39a; }
+      html[data-theme="dark"] .st--warn { background: #3a2c10; color: #e8bd6a; }
+      html[data-theme="dark"] .st--bad { background: #3a1717; color: #f09a9a; }
+      .bubble ul, .bubble ol { margin: 4px 0 8px; padding-left: 20px; }
+      .bubble li { margin: 2px 0; }
+      .kvrow {
+        display: flex;
+        gap: 12px;
+        padding: 4px 0;
+        border-bottom: 1px dashed var(--line);
+      }
+      .kvrow:last-child { border-bottom: 0; }
+      .kvrow__k { flex: 0 0 44%; font-weight: 600; }
+      .kvrow__v { flex: 1; }
+      .card {
+        border: 1px solid var(--edge);
+        border-radius: 12px;
+        overflow: hidden;
+        margin: 10px 0 2px;
+      }
+      table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+      thead th {
+        background: var(--chip);
+        text-align: left;
+        font-weight: 600;
+        color: var(--ink);
+        padding: 8px 11px;
+        border-bottom: 1px solid var(--edge);
+      }
+      td {
+        padding: 8px 11px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      tr:last-child td { border-bottom: 0; }
+      td.num { text-align: right; font-variant-numeric: tabular-nums; }
+      td.mute { color: var(--muted); font-style: italic; }
+
+      .typing {
+        display: none;
+        gap: 5px;
+        padding: 0 18px 14px;
+      }
+      .typing.is-on { display: flex; }
+      .typing i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--muted);
+        animation: bob 1.15s infinite;
+      }
+      .typing i:nth-child(2) { animation-delay: 0.15s; }
+      .typing i:nth-child(3) { animation-delay: 0.3s; }
+      @keyframes bob {
+        0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+        30% { transform: translateY(-4px); opacity: 1; }
+      }
+
+      .starters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 0 18px 14px;
+      }
+      .quick-reply {
+        background: var(--chip);
+        border: 1px solid var(--edge);
+        color: var(--ink);
+        border-radius: 999px;
+        padding: 7px 13px;
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .quick-reply:hover { border-color: var(--blue); color: var(--blue-d); }
+
+      .composer {
+        display: flex;
+        gap: 10px;
+        padding: 14px 18px;
+        border-top: 1px solid var(--line);
+        background: var(--card);
+      }
+      .composer__field {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        background: var(--surface-2);
+        border: 1px solid var(--edge);
+        border-radius: 12px;
+        padding: 0 12px;
+      }
+      .composer__field svg { width: 17px; height: 17px; color: var(--muted); }
+      .composer__input {
+        flex: 1;
+        border: 0;
+        background: none;
+        color: var(--ink);
+        font: inherit;
+        padding: 11px 0;
+        outline: none;
+      }
+      .composer__send {
+        width: 42px;
+        border: 0;
+        border-radius: 12px;
+        background: var(--blue);
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+      }
+      .composer__send svg { width: 19px; height: 19px; }
+      .composer__note {
+        margin: 0;
+        padding: 0 18px 15px;
+        color: var(--muted);
+        font-size: 11.5px;
+      }
+
+      /* ---------- side rail ---------- */
+      .side h4 {
+        margin: 0 0 10px;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+      .side__box { padding: 16px 18px; }
+      .kv { font-size: 13px; }
+      .kv div {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 6px 0;
+        border-bottom: 1px dashed var(--line);
+      }
+      .kv div:last-child { border-bottom: 0; }
+      .kv b { font-weight: 600; }
+      .kv span { color: var(--muted); }
+      .side__list { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--muted); }
+      .side__list li { margin-bottom: 6px; }
+
+      footer {
+        border-top: 1px solid var(--line);
+        background: var(--card);
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+      footer .wrap { padding: 18px 20px; }
+    </style>
+  </head>
+  <body>
+    <div class="util">
+      <div class="util__in">
+        <span class="pill">DEMO</span>
+        <span style="opacity: 0.9">Ooredoo Qatar · demo build</span>
+        <span class="util__spacer"></span>
+        <button id="themeToggle" type="button">
+          <span id="themeLabel">Dark</span>
+        </button>
+        <span style="opacity: 0.55">|</span>
+        <span style="opacity: 0.9">EN · AR</span>
+      </div>
+    </div>
+
+    <header class="hdr">
+      <div class="hdr__in">
+        <div class="brand">
+          <span class="brand__mark">O</span>
+          <span>ooredoo</span>
+        </div>
+        <nav class="nav">
+          <span>Mobile</span><span>Home internet</span><span>Devices</span>
+          <span>Roaming</span><span>Support</span>
+        </nav>
+        <span style="color: var(--muted); font-size: 14px">My Ooredoo</span>
+      </div>
+    </header>
+
+    <div class="wrap">
+      <div class="crumb">Home · Support · Care assistant</div>
+      <div class="grid">
+        <!-- ================= CHAT ================= -->
+        <section class="panel" id="chat">
+          <div class="chat__head">
+            <div class="avatar">O</div>
+            <div>
+              <div class="chat__title">Ooredoo Care Assistant</div>
+              <div class="chat__sub">
+                Billing · Network · Plans &amp; roaming · Account
+              </div>
+            </div>
+            <div class="status">
+              <span class="dot"></span>
+              <span id="connStatus">Connecting…</span>
+            </div>
+          </div>
+
+          <div class="banner" id="connBanner">
+            <span id="connBannerText"></span>
+          </div>
+
+          <div class="stream" id="stream"></div>
+          <div class="typing" id="typing"><i></i><i></i><i></i></div>
+          <div class="starters" id="starters"></div>
+
+          <div class="composer">
+            <label class="composer__field">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M4 5h16M4 12h16M4 19h10"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <input
+                class="composer__input"
+                id="composerInput"
+                type="text"
+                autocomplete="off"
+                placeholder="Ask about your bill, network, plan, roaming or balance…"
+                aria-label="Message"
+              />
+            </label>
+            <button class="composer__send" id="composerSend" type="button" aria-label="Send message">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M4 12h14m0 0-5-5m5 5-5 5"
+                  stroke="#fff"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+          <p class="composer__note">
+            Agent Platform Web SDK · custom rich-card renderer · Kore.ai Artemis
+          </p>
+        </section>
+
+        <!-- ================= SIDE RAIL ================= -->
+        <aside class="side">
+          <div class="panel side__box" style="margin-bottom: 16px">
+            <h4>Demo identity</h4>
+            <div class="kv">
+              <div><b>Customer</b><span id="idName">—</span></div>
+              <div><b>Mobile</b><span id="idMobile">—</span></div>
+              <div><b>Account</b><span id="idType">—</span></div>
+              <div><b>Plan</b><span id="idPlan">—</span></div>
+              <div><b>Monthly</b><span id="idFee">—</span></div>
+              <div><b>City</b><span id="idCity">—</span></div>
+              <div><b>Status</b><span id="idStatus">—</span></div>
+            </div>
+            <p style="color: var(--muted); font-size: 12.5px; margin: 12px 0 0" id="idNote">
+              Share your registered mobile number in the chat and this panel
+              fills from the live customer record.
+            </p>
+          </div>
+          <div class="panel side__box">
+            <h4>What you can ask</h4>
+            <ul class="side__list">
+              <li>Explain, compare or dispute a bill</li>
+              <li>Check outages and troubleshoot connectivity</li>
+              <li>Right-size a plan, add a data booster</li>
+              <li>Roaming packs and pay-per-use rates</li>
+              <li>Balance, usage, recharge and add-ons</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <footer>
+      <div class="wrap">
+        Demonstration build for evaluation purposes. Not affiliated with, and
+        not endorsed by, Ooredoo Q.P.S.C. Brand colours are used to illustrate
+        theming only.
+      </div>
+    </footer>
+
+    <script>
+      "use strict";
+
+      /* ============================================================
+         CONFIGURATION
+         Wiring copied from the proven asan-sdk-portal deployment, so this
+         page talks to the SAME production multi-agent build.
+         ============================================================ */
+
+      // "Telco AI" (supervisor Telco_Support_Orchestrator + 4 specialists).
+      const PROJECT_ID = "019f4247-5fdd-7671-89eb-abf191e317ce";
+
+      // PROD runtime (Kore SE workspace).
+      const ENDPOINT = "https://agents.kore.ai";
+
+      // Public Web SDK channel key — safe to ship in client HTML.
+      // Studio → Deployments → Channels → Web SDK → Setup instructions.
+      const PUBLIC_KEY =
+        "pk_a349bc21fc73793eb43b2e2e225ed9ff4b9c4758dcf448e7";
+
+      // Web SDK channel id. Channel + key are a matched pair; swapping one
+      // without the other yields a connect failure.
+      const CHANNEL_ID = "01a07053-ab8a-7de6-8fcd-6ea9fc5c0c8f";
+
+      // Official embed bundle. UMD build: exposes the `window.AgentSDK`
+      // namespace (AgentSDK / ChatClient classes) AND registers the
+      // <agent-widget> custom element, so both integration paths work.
+      const SDK_SOURCES = [ENDPOINT + "/api/sdk/embed/script"];
+
+      /* ============================================================ DOM */
+      const els = {
+        chat: document.getElementById("chat"),
+        stream: document.getElementById("stream"),
+        typing: document.getElementById("typing"),
+        starters: document.getElementById("starters"),
+        input: document.getElementById("composerInput"),
+        send: document.getElementById("composerSend"),
+        connStatus: document.getElementById("connStatus"),
+        banner: document.getElementById("connBanner"),
+        bannerText: document.getElementById("connBannerText"),
+      };
+
+      // Service-led starters: each is sent verbatim as the customer's first
+      // message, so they are phrased the way the agent's intents expect.
+      const STARTERS = [
+        "Explain my latest bill",
+        "My mobile data is not working",
+        "Recommend a data booster",
+        "Roaming packs for the USA",
+        "Check my balance",
+      ];
+
+      let activeChat = null;
+      let connected = false;
+
+      /* ============================================================ THEME */
+      (function themeSetup() {
+        const btn = document.getElementById("themeToggle");
+        const label = document.getElementById("themeLabel");
+        function systemDark() {
+          return window.matchMedia("(prefers-color-scheme: dark)").matches;
+        }
+        function currentIsDark() {
+          const t = document.documentElement.getAttribute("data-theme");
+          if (t === "dark") return true;
+          if (t === "light") return false;
+          return systemDark();
+        }
+        function sync() {
+          label.textContent = currentIsDark() ? "Light" : "Dark";
+        }
+        btn.addEventListener("click", function () {
+          document.documentElement.setAttribute(
+            "data-theme",
+            currentIsDark() ? "light" : "dark",
+          );
+          sync();
+        });
+        window
+          .matchMedia("(prefers-color-scheme: dark)")
+          .addEventListener("change", sync);
+        sync();
+      })();
+
+      /* ============ ESCAPING + tiny Markdown renderer ============
+         Everything is escaped first, so agent Markdown is safe to render. */
+      function esc(s) {
+        return String(s == null ? "" : s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+      // Masked identifiers the agent emits (s***@kore.com) collide with
+      // Markdown emphasis and used to render as "s" + a literal "*@kore.com**".
+      // Protect them before any asterisk parsing, then restore.
+      // esc() covers text nodes; attributes also need quote escaping.
+      function escAttr(s) {
+        return esc(s).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+      // The clickable label for an option: the first bold run if the agent used
+      // one ("**Ooredoo Store City Center** - Doha, **0.7 km**"),
+      // otherwise the head text up to the first separator.
+      function optionParts(head) {
+        const b = head.match(/\*\*([^*]+)\*\*/);
+        const title = b ? b[1].trim() : head.split(/\s+[-\u2014:]\s+/)[0].trim();
+        let rest = b ? head.slice(head.indexOf(b[0]) + b[0].length) : head.slice(title.length);
+        rest = rest.replace(/^\s*[-\u2014:,]\s*/, "").trim();
+        return { title: title, meta: rest };
+      }
+
+      // Strip Markdown so a list item can be pattern-matched as data.
+      function plainText(s) {
+        return String(s)
+          .replace(/\*\*([^*]+)\*\*/g, "$1")
+          .replace(/\*([^*]+)\*/g, "$1")
+          .replace(/`([^`]+)`/g, "$1")
+          .trim();
+      }
+
+      // "Fri, 4 Sept 2026 at 9:00 AM" -> { day, time }. Also accepts a bare
+      // time ("9:00 AM") for lists that repeat a single known date.
+      const SLOT_RE = /^(.*?)(?:\s+at\s+|\s+@\s+)(\d{1,2}[:.]\d{2}\s*(?:AM|PM)?)$/i;
+      const BARE_TIME_RE = /^(\d{1,2}[:.]\d{2}\s*(?:AM|PM)?)$/i;
+      function parseSlot(head) {
+        const t = plainText(head);
+        const m = t.match(SLOT_RE);
+        if (m) return { day: m[1].replace(/[,\s]+$/, "").trim(), time: m[2].trim(), full: t };
+        const b = t.match(BARE_TIME_RE);
+        if (b) return { day: "", time: b[1].trim(), full: t };
+        return null;
+      }
+
+      // A choice list whose items are all date-times renders as a day-grouped
+      // time picker rather than a bullet list.
+      function renderSlotPicker(items) {
+        const slots = items.map(function (it) { return parseSlot(it.head); });
+        if (slots.length < 2 || slots.some(function (x) { return !x; })) return null;
+        if (items.some(function (it) { return it.subs && it.subs.length; })) return null;
+
+        const days = [];
+        slots.forEach(function (sl) {
+          let d = days.filter(function (x) { return x.day === sl.day; })[0];
+          if (!d) { d = { day: sl.day, times: [] }; days.push(d); }
+          d.times.push(sl);
+        });
+
+        let html = '<div class="cal">';
+        days.forEach(function (d) {
+          if (d.day) {
+            const parts = d.day.split(/,\s*/);
+            const dow = parts.length > 1 ? parts[0] : "";
+            const rest = parts.length > 1 ? parts.slice(1).join(", ") : d.day;
+            html +=
+              '<div class="cal__day"><div class="cal__date">' +
+              (dow ? '<span class="cal__dow">' + esc(dow) + "</span>" : "") +
+              '<span class="cal__dnum">' + esc(rest) + "</span></div>";
+          } else {
+            html += '<div class="cal__day">';
+          }
+          html += '<div class="cal__slots">';
+          d.times.forEach(function (sl) {
+            html +=
+              '<button type="button" class="slot" data-choice="' + escAttr(sl.full) + '">' +
+              esc(sl.time) + "</button>";
+          });
+          html += "</div></div>";
+        });
+        return html + "</div>";
+      }
+
+      function inlineMd(s) {
+        const guards = [];
+        s = String(s).replace(
+          /[A-Za-z0-9._%+-]*\*{2,}[A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,
+          function (m) {
+            guards.push(m);
+            return "@@G" + (guards.length - 1) + "@@";
+          },
+        );
+        s = s
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\*\*(?=\S)([\s\S]+?)(?<=\S)\*\*/g, "<strong>$1</strong>")
+          // emphasis only when both delimiters sit on a word boundary
+          .replace(/(?<![\w*])\*(?=\S)([^*]+?)(?<=\S)\*(?![\w*])/g, "<em>$1</em>");
+        return s.replace(/@@G(\d+)@@/g, function (_, i) {
+          return guards[i];
+        });
+      }
+      // Non-committal values the agent uses deliberately — render them muted.
+      // Known lifecycle states, rendered as coloured pills so a status list is
+      // scannable instead of a wall of bold text.
+      const STATUS_CLASS = {
+        "under review": "warn", "in progress": "warn", "pending payment": "warn",
+        "pending": "warn", "awaiting approval": "warn", "resolving": "warn",
+        "investigating": "warn", "open": "warn", "scheduled": "warn", "unpaid": "warn",
+        "issued": "ok", "completed": "ok", "approved": "ok", "paid": "ok", "active": "ok",
+        "resolved": "ok", "delivered": "ok", "restored": "ok",
+        "rejected": "bad", "cancelled": "bad", "failed": "bad", "not active": "bad",
+        "suspended": "bad", "overdue": "bad", "barred": "bad",
+      };
+      const STATUS_RE = new RegExp(
+        "(" + Object.keys(STATUS_CLASS).join("|").replace(/ /g, "\\s") + ")",
+        "gi",
+      );
+      // Applied to already-rendered HTML. A <strong> that wholly wraps a status
+      // becomes the pill itself, so we do not end up with bold text inside a pill.
+      // Two passes, both writing sentinels, so an already-built pill is never
+      // re-matched and wrapped a second time.
+      function pillify(html) {
+        const made = [];
+        const stash = function (w) {
+          made.push(pill(w));
+          return "@@P" + (made.length - 1) + "@@";
+        };
+        let out = String(html).replace(
+          new RegExp("<strong>\\s*" + STATUS_RE.source + "\\s*</strong>", "gi"),
+          function (_, w) { return stash(w); },
+        );
+        out = out.replace(STATUS_RE, function (w) { return stash(w); });
+        return out.replace(/@@P(\d+)@@/g, function (_, i) { return made[i]; });
+      }
+      function pill(word) {
+        const k = String(word).toLowerCase().replace(/\s+/g, " ").trim();
+        return '<span class="st st--' + (STATUS_CLASS[k] || "neutral") + '">' + word + "</span>";
+      }
+
+      const MUTE_RE =
+        /\b(unavailable|not assessed|no data|n\/a|unknown|restricted|pending)\b/i;
+      // Currency / numeric cells get right-aligned tabular treatment.
+      const MONEY_RE = /^[−+-]?(AED|QAR|INR|USD|د\.إ)?\s?[\d,]+(\.\d+)?$/i;
+      function isMoney(s) {
+        return MONEY_RE.test(String(s).trim());
+      }
+
+      function el(tag, cls, html) {
+        const n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (html != null) n.innerHTML = html;
+        return n;
+      }
+
+      // Render a GitHub-style Markdown table into a bordered card.
+      function renderTable(lines) {
+        const rows = lines.map((l) =>
+          l.replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim()),
+        );
+        const head = rows[0];
+        const body = rows.slice(2); // row 1 is the --- separator
+        let html = "<table><thead><tr>";
+        head.forEach((h) => (html += "<th>" + inlineMd(esc(h)) + "</th>"));
+        html += "</tr></thead><tbody>";
+        body.forEach((r) => {
+          html += "<tr>";
+          r.forEach((c) => {
+            const cls = isMoney(c) ? "num" : MUTE_RE.test(c) ? "mute" : "";
+            html +=
+              '<td class="' + cls + '">' + inlineMd(esc(c)) + "</td>";
+          });
+          html += "</tr>";
+        });
+        return '<div class="card">' + html + "</tbody></table></div>";
+      }
+
+      function mdToHtml(text) {
+        const lines = String(text == null ? "" : text).split("\n");
+        // A numbered list in a message that asks the customer to pick is a set of
+        // choices, so render it as selectable cards rather than prose.
+        const isChoice = /\b(which|choose|select|pick|prefer|would you like)\b/i.test(
+          String(text == null ? "" : text),
+        );
+        let out = "";
+        let i = 0;
+        while (i < lines.length) {
+          const line = lines[i];
+          if (/^\s*\|.*\|\s*$/.test(line) && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1] || "")) {
+            const block = [];
+            while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) {
+              block.push(lines[i].trim());
+              i++;
+            }
+            out += renderTable(block);
+            continue;
+          }
+          if (/^\s*#{1,6}\s+/.test(line)) {
+            out += "<h3>" + inlineMd(esc(line.replace(/^\s*#{1,6}\s+/, ""))) + "</h3>";
+            i++;
+            continue;
+          }
+          // Bulleted list. Detail lines that follow a bullet ("Next milestone: …",
+          // "Expected by: …") belong to that bullet: previously they escaped the
+          // list and rendered as full-width paragraphs, fragmenting each record.
+          if (/^\s*[-*]\s+\S/.test(line)) {
+            const items = [];
+            while (i < lines.length && /^\s*[-*]\s+\S/.test(lines[i])) {
+              const head = lines[i].replace(/^\s*[-*]\s+/, "");
+              i++;
+              const subs = [];
+              while (
+                i < lines.length &&
+                lines[i].trim() !== "" &&
+                !/^\s*[-*]\s+\S/.test(lines[i]) &&
+                !/^\s*\d+[.)]\s+\S/.test(lines[i]) &&
+                !/^\s*#{1,6}\s+/.test(lines[i]) &&
+                !/^\s*\|.*\|\s*$/.test(lines[i])
+              ) {
+                subs.push(lines[i].trim());
+                i++;
+              }
+              items.push({ head: head, subs: subs });
+            }
+            if (isChoice) {
+              const cal = renderSlotPicker(items);
+              if (cal) { out += cal; continue; }
+            }
+            const grouped = items.some(function (it) { return it.subs.length; });
+            if (!grouped) {
+              let li = "";
+              items.forEach(function (it) {
+                li += "<li>" + pillify(inlineMd(esc(it.head))) + "</li>";
+              });
+              out += "<ul>" + li + "</ul>";
+              continue;
+            }
+            // Record cards: one per bullet, detail lines as aligned key/value rows.
+            let recs = "";
+            items.forEach(function (it) {
+              let meta = "";
+              it.subs.forEach(function (sub) {
+                const m = sub.match(/^\*{0,2}([^:*]{2,40}?)\*{0,2}:\s*(.+)$/);
+                if (m) {
+                  meta +=
+                    '<div class="rec__row"><span class="rec__k">' + inlineMd(esc(m[1])) +
+                    '</span><span class="rec__v">' + pillify(inlineMd(esc(m[2]))) + "</span></div>";
+                } else {
+                  meta += '<div class="rec__note">' + pillify(inlineMd(esc(sub))) + "</div>";
+                }
+              });
+              recs +=
+                '<div class="rec"><div class="rec__head">' +
+                pillify(inlineMd(esc(it.head))) +
+                "</div>" + meta + "</div>";
+            });
+            out += '<div class="recs">' + recs + "</div>";
+            continue;
+          }
+          // Numbered list. Detail lines ("Earliest slot: ...") belong to the item
+          // above them; previously every item closed the <ol> and the next one
+          // reopened it, which is why each entry restarted at "1.".
+          if (/^\s*\d+[.)]\s+\S/.test(line)) {
+            const items = [];
+            while (i < lines.length && /^\s*\d+[.)]\s+\S/.test(lines[i])) {
+              const head = lines[i].replace(/^\s*\d+[.)]\s+/, "");
+              i++;
+              const subs = [];
+              while (
+                i < lines.length &&
+                lines[i].trim() !== "" &&
+                !/^\s*\d+[.)]\s+\S/.test(lines[i]) &&
+                !/^\s*[-*]\s+\S/.test(lines[i]) &&
+                !/^\s*#{1,6}\s+/.test(lines[i]) &&
+                !/^\s*\|.*\|\s*$/.test(lines[i])
+              ) {
+                subs.push(lines[i].trim());
+                i++;
+              }
+              items.push({ head: head, subs: subs });
+            }
+
+            if (isChoice) {
+              const cal = renderSlotPicker(items);
+              if (cal) { out += cal; continue; }
+            }
+
+            if (isChoice) {
+              let cards = "";
+              items.forEach(function (it) {
+                const parts = optionParts(it.head);
+                let meta = "";
+                if (parts.meta) {
+                  meta += '<span class="opt__meta">' + inlineMd(esc(parts.meta)) + "</span>";
+                }
+                it.subs.forEach(function (sub) {
+                  const m = sub.match(/^\*{0,2}([^:*]{2,40}?)\*{0,2}:\s*(.+)$/);
+                  meta += m
+                    ? '<span class="opt__row"><span class="opt__k">' + inlineMd(esc(m[1])) +
+                      '</span><span class="opt__v">' + pillify(inlineMd(esc(m[2]))) + "</span></span>"
+                    : '<span class="opt__meta">' + pillify(inlineMd(esc(sub))) + "</span>";
+                });
+                cards +=
+                  '<button type="button" class="opt" data-choice="' + escAttr(parts.title) + '">' +
+                  '<span class="opt__title">' + inlineMd(esc(parts.title)) + "</span>" +
+                  meta + "</button>";
+              });
+              out += '<div class="opts">' + cards + "</div>";
+              continue;
+            }
+
+            let li = "";
+            items.forEach(function (it) {
+              let sub = "";
+              it.subs.forEach(function (x) {
+                sub += '<div class="li__sub">' + pillify(inlineMd(esc(x))) + "</div>";
+              });
+              li += "<li>" + pillify(inlineMd(esc(it.head))) + sub + "</li>";
+            });
+            out += "<ol>" + li + "</ol>";
+            continue;
+          }
+          if (line.trim() === "") { i++; continue; }
+          // "**Label:** value" is a field, not a sentence - render it as a row.
+          const kv = line.match(/^\s*\*\*([^*]+?):\*\*\s*(.+)$/);
+          if (kv) {
+            out +=
+              '<div class="kvrow"><span class="kvrow__k">' +
+              inlineMd(esc(kv[1])) +
+              '</span><span class="kvrow__v">' +
+              pillify(inlineMd(esc(kv[2]))) +
+              "</span></div>";
+            i++;
+            continue;
+          }
+          out += "<p>" + pillify(inlineMd(esc(line))) + "</p>";
+          i++;
+        }
+        return out;
+      }
+
+      /* ============================================================ RENDER */
+      function scrollDown() {
+        els.stream.scrollTop = els.stream.scrollHeight;
+      }
+      function renderUser(text) {
+        const row = el("div", "row row--me");
+        row.appendChild(el("div", "bubble", "<p>" + inlineMd(esc(text)) + "</p>"));
+        els.stream.appendChild(row);
+        scrollDown();
+      }
+      function renderAssistant(msg) {
+        const content =
+          (msg && (msg.content || msg.text || msg.message)) || "";
+        if (!String(content).trim()) return; // ignore empty turns
+        const row = el("div", "row row--bot");
+        row.appendChild(el("div", "bubble", mdToHtml(content)));
+        els.stream.appendChild(row);
+        scrollDown();
+      }
+
+      // Streaming: one live bubble per messageId, appended chunk by chunk.
+      const streamNodes = {};
+      function appendStream(id, chunk) {
+        if (!streamNodes[id]) {
+          const row = el("div", "row row--bot");
+          const b = el("div", "bubble", "");
+          row.appendChild(b);
+          els.stream.appendChild(row);
+          streamNodes[id] = { row: row, bubble: b, buf: "" };
+        }
+        const n = streamNodes[id];
+        n.buf += chunk;
+        n.bubble.innerHTML = mdToHtml(n.buf);
+        scrollDown();
+      }
+      function clearStreamNode(id) {
+        const n = streamNodes[id];
+        if (n && n.row && n.row.parentNode) n.row.parentNode.removeChild(n.row);
+        delete streamNodes[id];
+      }
+
+      function showTyping(on) {
+        els.typing.classList.toggle("is-on", !!on);
+        if (on) scrollDown();
+      }
+      function setBanner(kind, html) {
+        els.banner.classList.add("is-shown");
+        els.bannerText.innerHTML = html;
+        els.chat.classList.remove("is-connected", "is-offline");
+        els.chat.classList.add("is-offline");
+        els.connStatus.textContent =
+          kind === "notconnected" ? "Not connected" : "Offline · sample UI";
+      }
+      function setConnected() {
+        connected = true;
+        els.banner.classList.remove("is-shown");
+        els.chat.classList.remove("is-offline");
+        els.chat.classList.add("is-connected");
+        els.connStatus.textContent = "Connected";
+      }
+
+      /* ======================================= OFFLINE SAMPLE CARD */
+      function renderSampleCard() {
+        renderAssistant({
+          role: "assistant",
+          content: [
+            "### Latest bill — INV-2026-0842",
+            "",
+            "| Detail | Value |",
+            "| --- | --- |",
+            "| Billing period | 1 - 31 Aug 2026 |",
+            "| Plan | Postpaid Pro 120 |",
+            "| Monthly fee | AED 120.00 |",
+            "| Usage & add-ons | AED 40.00 |",
+            "| Total due | AED 160.00 |",
+            "| Status | Unpaid |",
+            "",
+            "**This is the offline demo renderer.** Connect the production Web SDK key to talk to the live Ooredoo Care agent.",
+          ].join("\n"),
+        });
+      }
+
+      /* ======================================= SDK LOADER + WIRING */
+      function loadScript(src) {
+        return new Promise(function (resolve, reject) {
+          const s = document.createElement("script");
+          s.src = src;
+          s.async = true;
+          s.onload = function () { resolve(src); };
+          s.onerror = function () { reject(new Error("Failed to load " + src)); };
+          document.head.appendChild(s);
+        });
+      }
+
+      // The UMD bundle exposes `window.AgentSDK` as a NAMESPACE object, with the
+      // client constructor at `window.AgentSDK.AgentSDK` (not window.AgentSDK
+      // itself). Resolve whichever shape is present.
+      function resolveSDKClass() {
+        const ns = window.AgentSDK;
+        if (typeof ns === "function") return ns;
+        if (ns && typeof ns.AgentSDK === "function") return ns.AgentSDK;
+        if (ns && typeof ns.default === "function") return ns.default;
+        if (ns && typeof ns.ChatClient === "function") return ns.ChatClient;
+        return null;
+      }
+
+      async function loadSdk() {
+        for (const src of SDK_SOURCES) {
+          try {
+            await loadScript(src);
+            if (resolveSDKClass()) return "class";
+            if (window.customElements && customElements.get("agent-widget"))
+              return "webcomponent";
+          } catch (err) {
+            console.warn("[OOREDOO-SDK]", err.message);
+          }
+        }
+        return null;
+      }
+
+      function handleRuntimeError(err) {
+        console.warn("[OOREDOO-SDK] send failed:", err && err.message);
+        showTyping(false);
+        renderAssistant({
+          role: "assistant",
+          content:
+            "**I could not reach the Ooredoo service just now.** Please retry in a moment — your session is unchanged.",
+        });
+      }
+
+      function wireChat(chat) {
+        activeChat = chat;
+        chat.on("message", function (m) {
+          showTyping(false);
+          if (m && m.id) clearStreamNode(m.id);
+          if (m && m.role === "user") return; // already echoed locally
+          renderAssistant(m);
+        });
+        chat.on("messageChunk", function (p) {
+          if (p && p.messageId != null) appendStream(p.messageId, p.chunk || "");
+        });
+        chat.on("typing", function (p) {
+          showTyping(p && p.isTyping);
+        });
+        if (typeof chat.on === "function") chat.on("error", handleRuntimeError);
+      }
+
+      // Starter chips are a first-turn affordance only: once the customer has
+      // said anything they are stale (and re-tapping one derails the flow),
+      // so retire them on the first send.
+      function retireStarters() {
+        if (els.starters && els.starters.childNodes.length) {
+          els.starters.innerHTML = "";
+          els.starters.style.display = "none";
+        }
+        if (document.activeElement && document.activeElement.blur)
+          document.activeElement.blur();
+      }
+
+      function send(text, chat) {
+        const value = String(text || "").trim();
+        if (!value) return;
+        retireStarters();
+        renderUser(value);
+        maybeIdentify(value);
+        const c = chat || activeChat;
+        if (connected && c && typeof c.send === "function") {
+          showTyping(true);
+          try {
+            Promise.resolve(c.send(value)).catch(handleRuntimeError);
+          } catch (err) {
+            handleRuntimeError(err);
+          }
+        } else {
+          setTimeout(function () {
+            showTyping(false);
+            renderSampleCard();
+          }, 500);
+        }
+      }
+
+      // Option cards are rendered by the Markdown layer, so wire them with one
+      // delegated listener. Picking an option locks that group so the customer
+      // cannot submit two choices for the same question.
+      els.stream.addEventListener("click", function (ev) {
+        const btn = ev.target.closest ? ev.target.closest(".opt, .slot") : null;
+        if (!btn || btn.disabled) return;
+        const group = btn.closest(".opts, .cal") || btn.parentNode;
+        Array.prototype.forEach.call(group.querySelectorAll(".opt, .slot"), function (b) {
+          b.disabled = true;
+          if (b !== btn) b.classList.add("opt--dim");
+        });
+        btn.classList.add("opt--picked");
+        send(btn.getAttribute("data-choice"), activeChat);
+      });
+
+      function renderStarters() {
+        STARTERS.forEach(function (s) {
+          const chip = el("button", "quick-reply", esc(s));
+          chip.type = "button";
+          chip.addEventListener("click", function () {
+            els.input.value = "";
+            send(s, activeChat);
+          });
+          els.starters.appendChild(chip);
+        });
+      }
+
+      async function init() {
+        renderStarters();
+
+        if (!PUBLIC_KEY || /REPLACE/i.test(PUBLIC_KEY)) {
+          setBanner(
+            "notconnected",
+            "Not yet connected — paste your Web SDK key into <code>PUBLIC_KEY</code> (Studio → Deployments → Channels → Web SDK).",
+          );
+          renderSampleCard();
+          return;
+        }
+
+        let mode = null;
+        try {
+          mode = await loadSdk();
+        } catch (err) {
+          mode = null;
+        }
+
+        if (mode !== "class") {
+          setBanner(
+            "offline",
+            "Could not load the Web SDK bundle from <code>" +
+              esc(ENDPOINT) +
+              "</code>. Showing the sample UI.",
+          );
+          renderSampleCard();
+          return;
+        }
+
+        try {
+          const SDKClass = resolveSDKClass();
+          const sdk = new SDKClass({
+            projectId: PROJECT_ID,
+            apiKey: PUBLIC_KEY,
+            endpoint: ENDPOINT,
+            channelId: CHANNEL_ID,
+          });
+          await sdk.connect();
+          const chat = typeof sdk.chat === "function" ? sdk.chat() : sdk;
+          wireChat(chat);
+          setConnected();
+        } catch (err) {
+          console.warn("[OOREDOO-SDK] connect failed:", err && err.message);
+          setBanner(
+            "offline",
+            "Could not reach the endpoint (" +
+              esc(ENDPOINT) +
+              "). Showing the sample UI so the styling still demos.",
+          );
+          renderSampleCard();
+        }
+      }
+
+      /* ============================================================
+         DEMO IDENTITY — populated from Supabase
+         The agent asks for the customer's mobile number in chat. When the
+         customer types one, resolve it against the live telco_customers
+         record and fill the profile panel. Nothing here touches the SDK.
+         ============================================================ */
+      const IDENTIFY_URL =
+        "https://obagcessyqdsbihnmeav.supabase.co/functions/v1/telco-identify";
+
+      const ident = {
+        name: document.getElementById("idName"),
+        mobile: document.getElementById("idMobile"),
+        type: document.getElementById("idType"),
+        plan: document.getElementById("idPlan"),
+        fee: document.getElementById("idFee"),
+        city: document.getElementById("idCity"),
+        status: document.getElementById("idStatus"),
+        note: document.getElementById("idNote"),
+      };
+      let identifiedFor = null;
+
+      // A phone number anywhere in the message: +971 52 447 8677, 0501234567,
+      // 971524478677 — at least 9 digits once punctuation is stripped.
+      const PHONE_RE = /(\+?\d[\d\s().-]{7,}\d)/;
+
+      function titleCase(v) {
+        const t = String(v == null ? "" : v).trim();
+        return t ? t.charAt(0).toUpperCase() + t.slice(1) : "—";
+      }
+
+      function fillIdentity(d) {
+        ident.name.textContent = d.full_name || "—";
+        ident.mobile.textContent = d.msisdn || "—";
+        ident.type.textContent = titleCase(d.account_type);
+        ident.plan.textContent = d.plan_name || "—";
+        ident.fee.textContent = d.plan_monthly_fee || "—";
+        ident.city.textContent = d.city || "—";
+        ident.status.innerHTML = d.status
+          ? pill(titleCase(d.status))
+          : "—";
+        ident.note.textContent =
+          "Loaded from the live customer record" +
+          (d.plan_data_gb ? " · " + d.plan_data_gb + " GB plan allowance" : "") +
+          ".";
+      }
+
+      function maybeIdentify(text) {
+        const m = String(text || "").match(PHONE_RE);
+        if (!m) return;
+        const raw = m[1].trim();
+        const digits = raw.replace(/\D/g, "");
+        if (digits.length < 9) return;
+        if (identifiedFor === digits) return; // already resolved this number
+        identifiedFor = digits;
+        fetch(IDENTIFY_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ msisdn: raw }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d && d.found) fillIdentity(d);
+            else identifiedFor = null; // let a corrected number try again
+          })
+          .catch(function () { identifiedFor = null; });
+      }
+
+      els.send.addEventListener("click", function () {
+        const v = els.input.value.trim();
+        if (!v) return;
+        els.input.value = "";
+        send(v, activeChat);
+      });
+      els.input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          els.send.click();
+        }
+      });
+
+      try {
+        init();
+      } catch (err) {
+        console.warn("[OOREDOO-SDK] init error:", err && err.message);
+        setBanner("offline", "Start-up error. Showing the sample UI.");
+        renderSampleCard();
+      }
+    </script>
+  </body>
+</html>
