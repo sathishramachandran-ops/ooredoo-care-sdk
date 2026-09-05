@@ -271,6 +271,98 @@
       .row--me .bubble code { background: rgba(255, 255, 255, 0.22); }
 
       /* rich card: GitHub-style tables from the agent's Markdown */
+
+      /* ---------- allowance infographic ----------
+         A balance/allowance answer is a set of measurements, not prose, so it is
+         rendered as a hero figure plus one ring per allowance. Denominators come
+         from the identified customer's plan (telco-identify); when a total is not
+         known the cell degrades to a plain figure rather than inventing a scale. */
+      .info {
+        border: 1px solid var(--edge);
+        border-radius: 14px;
+        background: var(--card);
+        margin: 10px 0 4px;
+        overflow: hidden;
+      }
+      .info__hero {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        background: linear-gradient(180deg, var(--chip), var(--card));
+        border-bottom: 1px solid var(--line);
+      }
+      .info__lbl {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .info__amt {
+        font-size: 30px;
+        font-weight: 700;
+        line-height: 1.15;
+        color: var(--brand);
+        font-variant-numeric: tabular-nums;
+        margin-top: 2px;
+      }
+      .info__sub { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+      .info__spacer { flex: 1; }
+      .info__chip {
+        border: 1px solid var(--edge);
+        background: var(--card);
+        border-radius: 999px;
+        padding: 5px 11px;
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .info__chip b { color: var(--ink); font-weight: 600; }
+      .info__grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .info__cell {
+        padding: 14px 10px 15px;
+        text-align: center;
+        border-right: 1px solid var(--line);
+      }
+      .info__cell:last-child { border-right: 0; }
+      .info__ring { position: relative; width: 74px; height: 74px; margin: 0 auto 8px; }
+      .info__ring svg { display: block; transform: rotate(-90deg); }
+      .info__ring track { stroke: var(--line); }
+      .info__pct {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      .info__val {
+        font-size: 17px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      .info__of { color: var(--muted); font-size: 12px; margin-top: 1px; }
+      .info__name {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .info__low { margin-top: 6px; }
+      /* One column is unreadable at three-across on a narrow panel. */
+      @media (max-width: 560px) {
+        .info__grid { grid-template-columns: 1fr; }
+        .info__cell { border-right: 0; border-bottom: 1px solid var(--line); }
+        .info__cell:last-child { border-bottom: 0; }
+      }
       /* day-grouped time picker */
       .cal {
         border: 1px solid var(--edge);
@@ -931,13 +1023,203 @@
         return '<div class="card">' + html + "</tbody></table></div>";
       }
 
-      function mdToHtml(text) {
+
+      /* ============================================================
+         ALLOWANCE INFOGRAPHIC
+         "Your balance is AED 50.00 … 11.5 GB data left … 780 minutes left"
+         is measurement data. Rendered as a hero balance plus usage rings, with
+         the plan's totals as denominators so a ring means something.
+         ============================================================ */
+
+      // Populated by fillIdentity() from the live plan record. Null totals mean
+      // "unknown" and suppress the ring; unlimitedData means "no ceiling".
+      const planLimits = { name: null, data: null, minutes: null, sms: null, unlimitedData: false };
+
+      const RING_R = 27;
+      const RING_C = 2 * Math.PI * RING_R;
+
+      function ringSvg(pct) {
+        const p = Math.max(0, Math.min(100, pct));
+        const dash = (p / 100) * RING_C;
+        return (
+          '<div class="info__ring"><svg width="74" height="74" viewBox="0 0 74 74">' +
+          '<circle cx="37" cy="37" r="' + RING_R + '" fill="none" stroke="var(--line)" stroke-width="7"/>' +
+          '<circle cx="37" cy="37" r="' + RING_R + '" fill="none" stroke="var(--brand)" stroke-width="7"' +
+          ' stroke-linecap="round" stroke-dasharray="' + dash.toFixed(1) + " " + RING_C.toFixed(1) + '"/>' +
+          "</svg>" +
+          '<span class="info__pct">' + Math.round(p) + "%</span></div>"
+        );
+      }
+
+      // An unlimited allowance still deserves a ring; a full one reads as "no cap".
+      function ringInfinite() {
+        return (
+          '<div class="info__ring"><svg width="74" height="74" viewBox="0 0 74 74">' +
+          '<circle cx="37" cy="37" r="' + RING_R + '" fill="none" stroke="var(--brand)" stroke-width="7"/>' +
+          "</svg>" +
+          '<span class="info__pct">&#8734;</span></div>'
+        );
+      }
+
+      function groupMoney(n) {
+        const v = Number(n);
+        if (!isFinite(v)) return String(n);
+        return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function groupNum(n) {
+        const v = Number(n);
+        if (!isFinite(v)) return String(n);
+        return v % 1 === 0 ? v.toLocaleString("en-US") : v.toLocaleString("en-US", { maximumFractionDigits: 2 });
+      }
+
+      // "2026-07-28" -> "28 Jul 2026". Anything else is passed through untouched.
+      function prettyDate(v) {
+        const m = String(v).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return String(v).trim();
+        const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        return Number(m[3]) + " " + MON[Number(m[2]) - 1] + " " + m[1];
+      }
+
+      function infoCell(metric) {
+        const total = metric.total;
+        const unlimited = metric.unlimited;
+        let ring, of;
+        if (unlimited) {
+          ring = ringInfinite();
+          of = "of unlimited";
+        } else if (total != null && total > 0) {
+          ring = ringSvg((metric.compare / total) * 100);
+          of = "of " + groupNum(total) + (metric.unit ? " " + metric.unit : "");
+        } else {
+          // No known ceiling: show the figure alone rather than a meaningless ring.
+          ring = "";
+          of = "remaining";
+        }
+        const low = !unlimited && total != null && total > 0 && metric.compare / total < 0.2;
+        return (
+          '<div class="info__cell">' + ring +
+          '<div class="info__val">' + esc(metric.display) + "</div>" +
+          '<div class="info__of">' + esc(of) + "</div>" +
+          '<div class="info__name">' + esc(metric.label) + "</div>" +
+          (low ? '<div class="info__low">' + pill("Low") + "</div>" : "") +
+          "</div>"
+        );
+      }
+
+      const BAL_RE = /\b(?:balance|credit)\s+(?:is|of|:)\s*\**\s*([A-Z]{3})\s*([\d,]+(?:\.\d+)?)/i;
+      const DATA_RE = /([\d.,]+)\s*(GB|MB|TB)\b/i;
+      const MIN_RE = /([\d.,]+)\s*(?:minutes|minute|mins|min)\b/i;
+      const SMS_RE = /([\d.,]+)\s*(?:SMS|texts|text messages)\b/i;
+      const VALID_RE = /\bvalid(?:ity)?\s*(?:until|till|through|to|:)\s*([0-9]{4}-[0-9]{2}-[0-9]{2}|[^,.;]+)/i;
+      const num = function (v) { return Number(String(v).replace(/,/g, "")); };
+
+      // Returns { html, rest } when the message reads as a balance/allowance
+      // summary, else null. `rest` is the prose we did not consume, so the
+      // closing "shall I show the breakdown?" line survives.
+      function extractAllowance(lines) {
+        const joined = lines.join("\n");
+        const bal = joined.match(BAL_RE);
+        const metrics = [];
+        const consumed = {};
+        let validUntil = null;
+
+        lines.forEach(function (raw, idx) {
+          const t = plainText(raw.replace(/^\s*[-*]\s+/, ""));
+          if (!t) return;
+          const isBullet = /^\s*[-*]\s+/.test(raw);
+          if (!isBullet) return; // allowances are listed as bullets
+
+          const v = t.match(VALID_RE);
+          if (v) { validUntil = v[1]; consumed[idx] = 1; return; }
+
+          const d = t.match(DATA_RE);
+          if (d && /data|internet/i.test(t)) {
+            const unit = d[2].toUpperCase();
+            const gb = unit === "MB" ? num(d[1]) / 1024 : unit === "TB" ? num(d[1]) * 1024 : num(d[1]);
+            metrics.push({
+              label: "Data", display: groupNum(num(d[1])) + " " + unit, unit: "GB",
+              compare: gb, total: planLimits.data, unlimited: planLimits.unlimitedData,
+            });
+            consumed[idx] = 1;
+            return;
+          }
+          const mi = t.match(MIN_RE);
+          if (mi) {
+            metrics.push({
+              label: "Voice", display: groupNum(num(mi[1])) + " min", unit: "min",
+              compare: num(mi[1]), total: planLimits.minutes, unlimited: false,
+            });
+            consumed[idx] = 1;
+            return;
+          }
+          const sm = t.match(SMS_RE);
+          if (sm) {
+            metrics.push({
+              label: "SMS", display: groupNum(num(sm[1])), unit: "",
+              compare: num(sm[1]), total: planLimits.sms, unlimited: false,
+            });
+            consumed[idx] = 1;
+            return;
+          }
+        });
+
+        // Needs to actually be a balance/allowance answer: a stated balance, or at
+        // least two allowances. One stray "500 MB" in prose must not trigger this.
+        if (!bal && metrics.length < 2) return null;
+
+        // Consume the balance sentence and a "you also have:" style lead-in.
+        lines.forEach(function (raw, idx) {
+          if (consumed[idx]) return;
+          const t = plainText(raw);
+          if (bal && BAL_RE.test(t)) { consumed[idx] = 1; return; }
+          if (/^you (?:also )?have\b.*:\s*$/i.test(t)) consumed[idx] = 1;
+        });
+
+        const heroAmt = bal ? bal[1].toUpperCase() + " " + groupMoney(num(bal[2])) : null;
+        const subBits = [];
+        if (planLimits.name) subBits.push(planLimits.name);
+
+        let html = '<div class="info">';
+        if (heroAmt || subBits.length || validUntil) {
+          html +=
+            '<div class="info__hero"><div>' +
+            '<div class="info__lbl">' + (heroAmt ? "Account balance" : "Plan") + "</div>" +
+            (heroAmt
+              ? '<div class="info__amt">' + esc(heroAmt) + "</div>"
+              : "") +
+            (subBits.length ? '<div class="info__sub">' + esc(subBits.join(" · ")) + "</div>" : "") +
+            "</div><span class=\"info__spacer\"></span>" +
+            (validUntil
+              ? '<span class="info__chip">Valid until <b>' + esc(prettyDate(validUntil)) + "</b></span>"
+              : "") +
+            "</div>";
+        }
+        if (metrics.length) {
+          html += '<div class="info__grid">';
+          metrics.forEach(function (m) { html += infoCell(m); });
+          html += "</div>";
+        }
+        html += "</div>";
+
+        const rest = [];
+        lines.forEach(function (raw, idx) { if (!consumed[idx]) rest.push(raw); });
+        return { html: html, rest: rest };
+      }
+
+      function mdToHtml(text, skipInfo) {
         const lines = String(text == null ? "" : text).split("\n");
         // A numbered list in a message that asks the customer to pick is a set of
         // choices, so render it as selectable cards rather than prose.
         const isChoice = /\b(which|choose|select|pick|prefer|would you like)\b/i.test(
           String(text == null ? "" : text),
         );
+        // Balance/allowance answers render as an infographic; whatever prose
+        // the pre-pass leaves behind falls through to the normal renderer.
+        if (!skipInfo) {
+          const info = extractAllowance(lines);
+          if (info) return info.html + mdToHtml(info.rest.join("\n"), true);
+        }
         let out = "";
         let i = 0;
         while (i < lines.length) {
@@ -1397,6 +1679,14 @@
         ident.status.innerHTML = d.status
           ? pill(titleCase(d.status))
           : "—";
+        // Remember the plan ceilings so allowance rings have a denominator.
+        planLimits.name = d.plan_name || null;
+        planLimits.data = d.plan_data_gb == null ? null : Number(d.plan_data_gb);
+        planLimits.minutes = d.plan_voice_minutes == null ? null : Number(d.plan_voice_minutes);
+        planLimits.sms = d.plan_sms_count == null ? null : Number(d.plan_sms_count);
+        // A postpaid plan with no data ceiling is the unlimited tier, not a gap.
+        planLimits.unlimitedData =
+          d.plan_data_gb == null && /unlimited/i.test(String(d.plan_name || ""));
         ident.note.textContent =
           "Loaded from the live customer record" +
           (d.plan_data_gb ? " · " + d.plan_data_gb + " GB plan allowance" : "") +
