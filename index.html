@@ -363,6 +363,77 @@
         .info__cell { border-right: 0; border-bottom: 1px solid var(--line); }
         .info__cell:last-child { border-bottom: 0; }
       }
+
+      /* ---------- bill comparison bar chart ----------
+         A period-over-period bill difference is a set of measurements, not
+         prose, so it renders as a header (this period vs last, net change)
+         plus one horizontal bar per cost driver, coloured by direction. */
+      .cmp {
+        border: 1px solid var(--edge);
+        border-radius: 14px;
+        background: var(--card);
+        margin: 10px 0 4px;
+        overflow: hidden;
+      }
+      .cmp__hero {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        background: linear-gradient(180deg, var(--chip), var(--card));
+        border-bottom: 1px solid var(--line);
+      }
+      .cmp__lbl {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .cmp__amt {
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+        margin-top: 2px;
+      }
+      .cmp__amt--up { color: var(--red); }
+      .cmp__amt--down { color: var(--green); }
+      .cmp__bars { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+      .cmp__row { display: flex; align-items: center; gap: 10px; }
+      .cmp__label {
+        flex: 0 0 64px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--ink);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+      .cmp__track {
+        flex: 1;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--line);
+        overflow: hidden;
+        display: block;
+      }
+      .cmp__fill--up, .cmp__fill--down { display: block; height: 100%; border-radius: 999px; }
+      .cmp__fill--up { background: var(--red); }
+      .cmp__fill--down { background: var(--green); }
+      .cmp__val {
+        flex: 0 0 74px;
+        text-align: right;
+        font-size: 13px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      .cmp__val--up { color: var(--red); }
+      .cmp__val--down { color: var(--green); }
+      @media (max-width: 560px) {
+        .cmp__label { flex-basis: 52px; }
+        .cmp__val { flex-basis: 62px; }
+      }
       /* day-grouped time picker */
       .cal {
         border: 1px solid var(--edge);
@@ -1207,18 +1278,129 @@
         return { html: html, rest: rest };
       }
 
-      function mdToHtml(text, skipInfo) {
+
+      /* ============================================================
+         BILL COMPARISON BAR CHART
+         "Your latest bill is AED 25.30 higher than last month ... VAS: AED
+         13.00, Taxes: AED 12.30" is a set of category deltas, not prose.
+         Rendered as a two-period header plus one horizontal bar per driver,
+         coloured red for an increase and green for a decrease.
+         ============================================================ */
+      const CMP_DIFF_RE = /\b([A-Z]{3})\s*([\d,]+(?:\.\d+)?)\s+(higher|more|greater|up|lower|less|down)\b/i;
+      const CMP_PERIOD_RE = /^(current|previous)\s*bill\s*:\s*(.+)$/i;
+      const CMP_CATS = ["data", "voice", "sms", "vas", "taxes"];
+      const CMP_CAT_RE = new RegExp("^(" + CMP_CATS.join("|") + ")\\s*:\\s*([+-]?)\\s*([A-Z]{3})\\s*([\\d,]+(?:\\.\\d+)?)$", "i");
+
+      // "2026-08" -> "Aug 2026"; a non-YYYY-MM label (rare) passes through as-is.
+      function prettyPeriod(v) {
+        const m = String(v).trim().match(/^(\d{4})-(\d{2})$/);
+        if (!m) return String(v).trim();
+        const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        return MON[Number(m[2]) - 1] + " " + m[1];
+      }
+
+      function cmpBarRow(label, amount, maxAbs, up) {
+        const pct = maxAbs > 0 ? Math.max(8, (Math.abs(amount) / maxAbs) * 100) : 8;
+        const fillCls = up ? "cmp__fill--up" : "cmp__fill--down";
+        const valCls = up ? "cmp__val--up" : "cmp__val--down";
+        const sign = up ? "+" : "−";
+        return (
+          '<div class="cmp__row">' +
+          '<span class="cmp__label">' + esc(label) + "</span>" +
+          '<span class="cmp__track"><span class="' + fillCls + '" style="width:' + pct.toFixed(0) + '%"></span></span>' +
+          '<span class="cmp__val ' + valCls + '">' + sign + groupMoney(Math.abs(amount)) + "</span>" +
+          "</div>"
+        );
+      }
+
+      // Returns { html, rest } when the message reads as a bill-comparison
+      // answer (a period-over-period difference plus at least one category
+      // driver), else null. `rest` is the prose we did not consume, so the
+      // "other categories stayed the same" line and the follow-up question
+      // survive.
+      function extractCompare(lines) {
+        // Markdown bold sits between the number and "higher/lower" ("**AED 25.30**
+        // higher"), so match against the plain-text join, not the raw markdown.
+        const joined = plainText(lines.join("\n"));
+        const diff = joined.match(CMP_DIFF_RE);
+        if (!diff) return null;
+
+        const up = /higher|more|greater|up/i.test(diff[3]);
+        const currency = diff[1].toUpperCase();
+        const total = num(diff[2]);
+        const consumed = {};
+        let currentPeriod = null;
+        let previousPeriod = null;
+        const drivers = [];
+
+        lines.forEach(function (raw, idx) {
+          if (plainText(raw).indexOf(diff[0]) !== -1) { consumed[idx] = 1; return; }
+          const t = plainText(raw.replace(/^\s*[-*]\s+/, ""));
+          if (!t) return;
+          const isBullet = /^\s*[-*]\s+/.test(raw);
+          if (!isBullet) return; // drivers are listed as bullets
+
+          const p = t.match(CMP_PERIOD_RE);
+          if (p) {
+            if (/^current$/i.test(p[1])) currentPeriod = p[2].trim();
+            else previousPeriod = p[2].trim();
+            consumed[idx] = 1;
+            return;
+          }
+          const c = t.match(CMP_CAT_RE);
+          if (c) {
+            const explicitSign = c[2] === "-" ? -1 : c[2] === "+" ? 1 : (up ? 1 : -1);
+            drivers.push({ label: c[1].toUpperCase(), amount: explicitSign * num(c[4]) });
+            consumed[idx] = 1;
+            return;
+          }
+          // A bare "Increase drivers:" / "Decrease drivers:" heading has no
+          // amount of its own to chart.
+          if (/^(increase|decrease)\s+drivers\s*:?\s*$/i.test(t)) consumed[idx] = 1;
+        });
+
+        // Needs at least one charted driver; a bare "bill is higher" sentence
+        // with no breakdown is a single number, not a chart.
+        if (!drivers.length) return null;
+
+        const maxAbs = Math.max.apply(null, drivers.map(function (d) { return Math.abs(d.amount); }));
+
+        let html = '<div class="cmp"><div class="cmp__hero"><div>';
+        html +=
+          '<div class="cmp__lbl">' +
+          (currentPeriod && previousPeriod
+            ? esc(prettyPeriod(currentPeriod) + " vs " + prettyPeriod(previousPeriod))
+            : "Bill comparison") +
+          "</div>" +
+          '<div class="cmp__amt ' + (up ? "cmp__amt--up" : "cmp__amt--down") + '">' +
+          (up ? "+" : "−") + esc(currency + " " + groupMoney(total)) +
+          "</div></div></div>";
+        html += '<div class="cmp__bars">';
+        drivers.forEach(function (d) { html += cmpBarRow(d.label, d.amount, maxAbs, d.amount >= 0); });
+        html += "</div></div>";
+
+        const rest = [];
+        lines.forEach(function (raw, idx) { if (!consumed[idx]) rest.push(raw); });
+        return { html: html, rest: rest };
+      }
+
+      function mdToHtml(text, skipInfo, skipCompare) {
         const lines = String(text == null ? "" : text).split("\n");
         // A numbered list in a message that asks the customer to pick is a set of
         // choices, so render it as selectable cards rather than prose.
         const isChoice = /\b(which|choose|select|pick|prefer|would you like)\b/i.test(
           String(text == null ? "" : text),
         );
-        // Balance/allowance answers render as an infographic; whatever prose
-        // the pre-pass leaves behind falls through to the normal renderer.
+        // Balance/allowance answers render as an infographic; a bill
+        // comparison renders as a bar chart; whatever prose the pre-pass
+        // leaves behind falls through to the normal renderer.
+        if (!skipCompare) {
+          const cmp = extractCompare(lines);
+          if (cmp) return cmp.html + mdToHtml(cmp.rest.join("\n"), true, true);
+        }
         if (!skipInfo) {
           const info = extractAllowance(lines);
-          if (info) return info.html + mdToHtml(info.rest.join("\n"), true);
+          if (info) return info.html + mdToHtml(info.rest.join("\n"), true, true);
         }
         let out = "";
         let i = 0;
